@@ -4,6 +4,7 @@ import random from "lodash.random";
 import randomColor from "randomcolor";
 
 import ChessBoard, { IChessBoardSquare } from "./ChessBoard";
+import { resolve } from "url";
 
 interface IChessBoardContainerProps {
   n: number;
@@ -29,7 +30,7 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
     setSquares(squares);
 
     fillChessBoard({
-      squares,
+      squares: copySquares(squares),
       rowStart: 0,
       rowEnd: squares.length - 1,
       columnStart: 0,
@@ -39,23 +40,37 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
   };
   React.useEffect(reset, [props.n]);
 
-  const fillChessBoard = ({
+  function copySquares(squares: IChessBoardSquare[][]) {
+    return squares.map((row) => row.map((square) => ({ ...square })));
+  }
+
+  const fillChessBoard = async ({
     squares,
     rowStart,
     rowEnd,
     columnStart,
     columnEnd,
     missingTile,
-  }: fillChessBoardArguments) => {
+  }: fillChessBoardArguments): Promise<IChessBoardSquare[][]> => {
     let color = randomColor({ luminosity: "random", hue: "random" });
     if (rowEnd - rowStart === 1) {
-      range(rowStart, rowEnd + 1).forEach((row) => {
-        range(columnStart, columnEnd + 1).forEach((column) => {
-          if (squares[row][column].color === "white") {
-            squares[row][column].color = color;
-          }
-        });
-      });
+      return new Promise((resolve) => {
+        console.log("Missing Tile: ", missingTile);
+        setTimeout(() => {
+          range(rowStart, rowEnd + 1).forEach((row) => {
+            range(columnStart, columnEnd + 1).forEach((column) => {
+              if (
+                (missingTile.row !== row || missingTile.column !== column) &&
+                squares[row][column].color === "white"
+              ) {
+                squares[row][column].color = color;
+              }
+            });
+          });
+          resolve(copySquares(squares));
+          setSquares(squares);
+        }, 1000);
+      }) as Promise<IChessBoardSquare[][]>;
     } else {
       const rows = range(rowStart, rowEnd + 1);
       const columns = range(columnStart, columnEnd + 1);
@@ -99,89 +114,87 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
         missingTile
       );
 
-      if (quadrantMissingTile >= 0) {
-        let missingTile1 = null;
-        let missingTile2 = null;
-        let missingTile3 = null;
-        let missingTile4 = null;
+      let missingTile1 = { row: upperColumnEnd, column: leftRowEnd };
+      let missingTile2 = { row: upperColumnEnd, column: rightRowStart };
+      let missingTile3 = { row: lowerColumnStart, column: leftRowEnd };
+      let missingTile4 = { row: lowerColumnStart, column: rightRowStart };
 
-        missingTile1 = { row: upperColumnEnd, column: leftRowEnd };
-        missingTile2 = { row: upperColumnEnd, column: rightRowStart };
-        missingTile3 = { row: lowerColumnStart, column: leftRowEnd };
-        missingTile4 = { row: lowerColumnStart, column: rightRowStart };
+      const squareTopLeft = squares[missingTile1.row][missingTile1.column];
+      const squareTopRight = squares[missingTile2.row][missingTile2.column];
+      const squareBottomLeft = squares[missingTile3.row][missingTile3.column];
 
-        const squareTopLeft = squares[missingTile1.row][missingTile1.column];
-        const squareTopRight = squares[missingTile2.row][missingTile2.column];
-        const squareBottomLeft = squares[missingTile3.row][missingTile3.column];
+      const squareBottomRight = squares[missingTile4.row][missingTile4.column];
 
-        const squareBottomRight =
-          squares[missingTile4.row][missingTile4.column];
-
-        if (quadrantMissingTile === 0) {
-          squareTopRight.color = color;
-          squareBottomLeft.color = color;
-          squareBottomRight.color = color;
-          missingTile1 = missingTile;
-        }
-
-        if (quadrantMissingTile === 1) {
-          squareTopLeft.color = color;
-          squareBottomLeft.color = color;
-          squareBottomRight.color = color;
-          missingTile2 = missingTile;
-        }
-
-        if (quadrantMissingTile === 2) {
-          squareTopLeft.color = color;
-          squares[missingTile2.row][missingTile2.column].color = color;
-          squares[missingTile4.row][missingTile4.column].color = color;
-          missingTile3 = missingTile;
-        }
-
-        if (quadrantMissingTile === 3) {
-          squares[missingTile1.row][missingTile1.column].color = color;
-          squares[missingTile2.row][missingTile2.column].color = color;
-          squares[missingTile3.row][missingTile3.column].color = color;
-          missingTile4 = missingTile;
-        }
-
-        setSquares(squares);
-        fillChessBoard({
-          squares,
-          rowStart: quadrant1.rowStart,
-          rowEnd: quadrant1.rowEnd,
-          columnStart: quadrant1.columnStart,
-          columnEnd: quadrant1.columnEnd,
-          missingTile: missingTile1!,
-        });
-
-        fillChessBoard({
-          squares,
-          rowStart: quadrant2.rowStart,
-          rowEnd: quadrant2.rowEnd,
-          columnStart: quadrant2.columnStart,
-          columnEnd: quadrant2.columnEnd,
-          missingTile: missingTile2!,
-        });
-
-        fillChessBoard({
-          squares,
-          rowStart: quadrant3.rowStart,
-          rowEnd: quadrant3.rowEnd,
-          columnStart: quadrant3.columnStart,
-          columnEnd: quadrant3.columnEnd,
-          missingTile: missingTile3!,
-        });
-
-        fillChessBoard({
-          squares,
-          rowStart: quadrant4.rowStart,
-          rowEnd: quadrant4.rowEnd,
-          columnStart: quadrant4.columnStart,
-          columnEnd: quadrant4.columnEnd,
-          missingTile: missingTile4!,
-        });
+      if (quadrantMissingTile === 0) {
+        squareTopRight.color = color;
+        squareBottomLeft.color = color;
+        squareBottomRight.color = color;
+        missingTile1 = missingTile;
       }
+
+      if (quadrantMissingTile === 1) {
+        squareTopLeft.color = color;
+        squareBottomLeft.color = color;
+        squareBottomRight.color = color;
+        missingTile2 = missingTile;
+      }
+
+      if (quadrantMissingTile === 2) {
+        squareTopLeft.color = color;
+        squares[missingTile2.row][missingTile2.column].color = color;
+        squares[missingTile4.row][missingTile4.column].color = color;
+        missingTile3 = missingTile;
+      }
+
+      if (quadrantMissingTile === 3) {
+        squares[missingTile1.row][missingTile1.column].color = color;
+        squares[missingTile2.row][missingTile2.column].color = color;
+        squares[missingTile3.row][missingTile3.column].color = color;
+        missingTile4 = missingTile;
+      }
+
+      return new Promise((resolve) => {
+        setTimeout(async () => {
+          setSquares(squares);
+
+          let newSquares: IChessBoardSquare[][] = await fillChessBoard({
+            squares: copySquares(squares),
+            rowStart: quadrant1.rowStart,
+            rowEnd: quadrant1.rowEnd,
+            columnStart: quadrant1.columnStart,
+            columnEnd: quadrant1.columnEnd,
+            missingTile: missingTile1!,
+          });
+
+          newSquares = await fillChessBoard({
+            squares: newSquares,
+            rowStart: quadrant2.rowStart,
+            rowEnd: quadrant2.rowEnd,
+            columnStart: quadrant2.columnStart,
+            columnEnd: quadrant2.columnEnd,
+            missingTile: missingTile2!,
+          });
+
+          newSquares = await fillChessBoard({
+            squares: newSquares,
+            rowStart: quadrant3.rowStart,
+            rowEnd: quadrant3.rowEnd,
+            columnStart: quadrant3.columnStart,
+            columnEnd: quadrant3.columnEnd,
+            missingTile: missingTile3!,
+          });
+
+          newSquares = await fillChessBoard({
+            squares: newSquares,
+            rowStart: quadrant4.rowStart,
+            rowEnd: quadrant4.rowEnd,
+            columnStart: quadrant4.columnStart,
+            columnEnd: quadrant4.columnEnd,
+            missingTile: missingTile4!,
+          });
+          resolve(copySquares(newSquares));
+        }, 1000);
+      });
     }
   };
 
