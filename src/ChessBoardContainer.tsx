@@ -4,7 +4,6 @@ import random from "lodash.random";
 import randomColor from "randomcolor";
 
 import ChessBoard, { IChessBoardSquare } from "./ChessBoard";
-import { resolve } from "url";
 
 interface IChessBoardContainerProps {
   n: number;
@@ -12,6 +11,13 @@ interface IChessBoardContainerProps {
 
 function ChessBoardContainer(props: IChessBoardContainerProps) {
   const [squares, setSquares] = React.useState<IChessBoardSquare[][]>([]);
+  const [queuedChanges, setQueuedChanges] = React.useState<
+    IChessBoardSquare[][][]
+  >([]);
+  const [intervalId, setIntevalId] = React.useState<NodeJS.Timeout>();
+
+  const queuedChangesRef = React.useRef(queuedChanges);
+  queuedChangesRef.current = queuedChanges;
 
   const reset = () => {
     const columns = range(props.n);
@@ -37,6 +43,21 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
       columnEnd: squares.length - 1,
       missingTile: missingTile!,
     });
+
+    const intervalId = setInterval(() => {
+      if (queuedChangesRef.current.length > 0) {
+        const nextChange = queuedChangesRef.current[0];
+        setSquares(copySquares(nextChange));
+        setQueuedChanges((queuedChanges) => queuedChanges.slice(1));
+      }
+    }, 1000);
+
+    setIntevalId(intervalId);
+
+    return () => {
+      setQueuedChanges([]);
+      clearInterval(intervalId);
+    };
   };
   React.useEffect(reset, [props.n]);
 
@@ -44,33 +65,31 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
     return squares.map((row) => row.map((square) => ({ ...square })));
   }
 
-  const fillChessBoard = async ({
+  const fillChessBoard = ({
     squares,
     rowStart,
     rowEnd,
     columnStart,
     columnEnd,
     missingTile,
-  }: fillChessBoardArguments): Promise<IChessBoardSquare[][]> => {
+  }: fillChessBoardArguments) => {
     let color = randomColor({ luminosity: "random", hue: "random" });
     if (rowEnd - rowStart === 1) {
-      return new Promise((resolve) => {
-        console.log("Missing Tile: ", missingTile);
-        setTimeout(() => {
-          range(rowStart, rowEnd + 1).forEach((row) => {
-            range(columnStart, columnEnd + 1).forEach((column) => {
-              if (
-                (missingTile.row !== row || missingTile.column !== column) &&
-                squares[row][column].color === "white"
-              ) {
-                squares[row][column].color = color;
-              }
-            });
-          });
-          resolve(copySquares(squares));
-          setSquares(squares);
-        }, 1000);
-      }) as Promise<IChessBoardSquare[][]>;
+      range(rowStart, rowEnd + 1).forEach((row) => {
+        range(columnStart, columnEnd + 1).forEach((column) => {
+          if (
+            (missingTile.row !== row || missingTile.column !== column) &&
+            squares[row][column].color === "white"
+          ) {
+            squares[row][column].color = color;
+          }
+        });
+      });
+      setQueuedChanges((queuedChanges) => [
+        ...queuedChanges,
+        copySquares(squares),
+      ]);
+      return copySquares(squares);
     } else {
       const rows = range(rowStart, rowEnd + 1);
       const columns = range(columnStart, columnEnd + 1);
@@ -122,7 +141,6 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
       const squareTopLeft = squares[missingTile1.row][missingTile1.column];
       const squareTopRight = squares[missingTile2.row][missingTile2.column];
       const squareBottomLeft = squares[missingTile3.row][missingTile3.column];
-
       const squareBottomRight = squares[missingTile4.row][missingTile4.column];
 
       if (quadrantMissingTile === 0) {
@@ -153,48 +171,48 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
         missingTile4 = missingTile;
       }
 
-      return new Promise((resolve) => {
-        setTimeout(async () => {
-          setSquares(squares);
+      setQueuedChanges((queuedChanges) => [
+        ...queuedChanges,
+        copySquares(squares),
+      ]);
 
-          let newSquares: IChessBoardSquare[][] = await fillChessBoard({
-            squares: copySquares(squares),
-            rowStart: quadrant1.rowStart,
-            rowEnd: quadrant1.rowEnd,
-            columnStart: quadrant1.columnStart,
-            columnEnd: quadrant1.columnEnd,
-            missingTile: missingTile1!,
-          });
-
-          newSquares = await fillChessBoard({
-            squares: newSquares,
-            rowStart: quadrant2.rowStart,
-            rowEnd: quadrant2.rowEnd,
-            columnStart: quadrant2.columnStart,
-            columnEnd: quadrant2.columnEnd,
-            missingTile: missingTile2!,
-          });
-
-          newSquares = await fillChessBoard({
-            squares: newSquares,
-            rowStart: quadrant3.rowStart,
-            rowEnd: quadrant3.rowEnd,
-            columnStart: quadrant3.columnStart,
-            columnEnd: quadrant3.columnEnd,
-            missingTile: missingTile3!,
-          });
-
-          newSquares = await fillChessBoard({
-            squares: newSquares,
-            rowStart: quadrant4.rowStart,
-            rowEnd: quadrant4.rowEnd,
-            columnStart: quadrant4.columnStart,
-            columnEnd: quadrant4.columnEnd,
-            missingTile: missingTile4!,
-          });
-          resolve(copySquares(newSquares));
-        }, 1000);
+      let newSquares: IChessBoardSquare[][] = fillChessBoard({
+        squares: copySquares(squares),
+        rowStart: quadrant1.rowStart,
+        rowEnd: quadrant1.rowEnd,
+        columnStart: quadrant1.columnStart,
+        columnEnd: quadrant1.columnEnd,
+        missingTile: missingTile1!,
       });
+
+      newSquares = fillChessBoard({
+        squares: newSquares,
+        rowStart: quadrant2.rowStart,
+        rowEnd: quadrant2.rowEnd,
+        columnStart: quadrant2.columnStart,
+        columnEnd: quadrant2.columnEnd,
+        missingTile: missingTile2!,
+      });
+
+      newSquares = fillChessBoard({
+        squares: newSquares,
+        rowStart: quadrant3.rowStart,
+        rowEnd: quadrant3.rowEnd,
+        columnStart: quadrant3.columnStart,
+        columnEnd: quadrant3.columnEnd,
+        missingTile: missingTile3!,
+      });
+
+      newSquares = fillChessBoard({
+        squares: newSquares,
+        rowStart: quadrant4.rowStart,
+        rowEnd: quadrant4.rowEnd,
+        columnStart: quadrant4.columnStart,
+        columnEnd: quadrant4.columnEnd,
+        missingTile: missingTile4!,
+      });
+
+      return newSquares;
     }
   };
 
@@ -213,10 +231,6 @@ function findQuadrantWithMissingTile(
       missingTile.column <= quadrant.rowEnd
     );
   });
-
-  if (index === -1) {
-    debugger;
-  }
 
   return index;
 }
