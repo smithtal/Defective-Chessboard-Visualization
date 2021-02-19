@@ -2,6 +2,7 @@ import React from "react";
 
 export interface IChessBoardSquare {
   color: string;
+  special?: boolean;
 }
 
 export interface IChessBoardProps {
@@ -30,6 +31,7 @@ function ChessBoard(props: IChessBoardProps) {
                   key={`${rowIndex}|${columnIndex}`}
                   width={squareWidth}
                   color={square.color}
+                  special={square.special || false}
                 />
               );
             })}
@@ -43,6 +45,7 @@ function ChessBoard(props: IChessBoardProps) {
 interface ISquareProps {
   width: number;
   color: string;
+  special: boolean;
 }
 
 function Square(props: ISquareProps) {
@@ -51,7 +54,7 @@ function Square(props: ISquareProps) {
       style={{
         width: `${props.width}%`,
         backgroundColor: props.color,
-        border: "1px solid black",
+        border: `1px solid ${props.special ? "red" : "black"}`,
         boxSizing: "border-box",
       }}
     />

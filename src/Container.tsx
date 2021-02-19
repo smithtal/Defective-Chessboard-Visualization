@@ -11,7 +11,14 @@ function Container() {
         Defective Chess Board
       </h1>
       {!runSimulation && (
-        <div style={{ margin: "0 auto", display: "flex" }}>
+        <div
+          style={{
+            margin: "10px auto",
+            display: "flex",
+            justifyContent: "space-between",
+            width: "20%",
+          }}
+        >
           <button
             disabled={inputSize === 2}
             onClick={() => {
@@ -20,16 +27,13 @@ function Container() {
           >
             -
           </button>
-          <div>{inputSize}</div>
+          <div>Number of Rows: {inputSize}</div>
           <button
             onClick={() => {
               setInputSize((inputSize) => inputSize * 2);
             }}
           >
             +
-          </button>
-          <button onClick={() => setRunSimulation(true)}>
-            Start Simulation
           </button>
         </div>
       )}

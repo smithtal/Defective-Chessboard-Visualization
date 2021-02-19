@@ -14,7 +14,6 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
   const [queuedChanges, setQueuedChanges] = React.useState<
     IChessBoardSquare[][][]
   >([]);
-  const [intervalId, setIntevalId] = React.useState<NodeJS.Timeout>();
 
   const queuedChangesRef = React.useRef(queuedChanges);
   queuedChangesRef.current = queuedChanges;
@@ -32,7 +31,10 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
       column: random(props.n - 1),
     };
 
-    squares[missingTile.row][missingTile.column] = { color: "black" };
+    squares[missingTile.row][missingTile.column] = {
+      color: "black",
+      special: true,
+    };
     setSquares(squares);
 
     fillChessBoard({
@@ -51,8 +53,6 @@ function ChessBoardContainer(props: IChessBoardContainerProps) {
         setQueuedChanges((queuedChanges) => queuedChanges.slice(1));
       }
     }, 1000);
-
-    setIntevalId(intervalId);
 
     return () => {
       setQueuedChanges([]);
